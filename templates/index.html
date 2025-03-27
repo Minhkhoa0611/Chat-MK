@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=0.67, maximum-scale=0.67, user-scalable=no">
+    <title>Chat Room</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f0f2f5;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+        .chat-container {
+            width: 100%;
+            max-width: 700px;
+            height: 100%;
+            max-height: 100vh;
+            background-color: #fff;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+            border-radius: 10px;
+        }
+        .header {
+            background-color: #0078d7;
+            color: #fff;
+            padding: 20px;
+            text-align: center;
+            font-size: 24px; /* Tăng kích thước font */
+            font-weight: bold;
+            flex-shrink: 0;
+            border-top-left-radius: 10px;
+            border-top-right-radius: 10px;
+        }
+        .id-display {
+            text-align: center;
+            padding: 15px;
+            background-color: #f0f0f0;
+            font-size: 18px; /* Tăng kích thước font */
+            font-weight: bold;
+            color: #555;
+            flex-shrink: 0;
+        }
+        .message-box {
+            flex: 1;
+            padding: 15px;
+            overflow-y: auto;
+            background-color: #e5ddd5;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        .hidden-messages {
+            text-align: center;
+            color: #555;
+            cursor: pointer;
+            margin-bottom: 10px;
+            font-size: 16px; /* Tăng kích thước font */
+            font-style: italic;
+        }
+        .message {
+            padding: 15px;
+            border-radius: 10px;
+            max-width: 70%;
+            word-wrap: break-word;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            font-size: 18px; /* Tăng kích thước font */
+        }
+        .message.sent {
+            background-color: #0078d7;
+            color: #fff;
+            align-self: flex-end;
+        }
+        .message.received {
+            background-color: #fff;
+            color: #000;
+            align-self: flex-start;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+        .message img {
+            max-width: 100%;
+            max-height: 250px; /* Giới hạn chiều cao hình ảnh */
+            border-radius: 10px;
+            object-fit: cover; /* Đảm bảo hình ảnh không bị méo */
+        }
+        .message .sender {
+            font-size: 16px; /* Tăng kích thước font */
+            font-weight: bold;
+            color: #555;
+        }
+        .input-container {
+            display: flex;
+            align-items: center;
+            padding: 15px;
+            background-color: #f0f0f0;
+            gap: 15px;
+            flex-shrink: 0;
+            position: sticky;
+            bottom: 0;
+            justify-content: space-between;
+        }
+        .input-container textarea {
+            flex: 1;
+            border: none;
+            border-radius: 20px;
+            padding: 15px;
+            resize: none;
+            outline: none;
+            font-size: 18px; /* Tăng kích thước font */
+            min-height: 50px;
+            background-color: #e5e5e5;
+        }
+        .input-container input[type="file"] {
+            display: none;
+        }
+        .input-container label {
+            cursor: pointer;
+            font-size: 24px; /* Tăng kích thước font */
+            color: #0078d7;
+            flex-shrink: 0; /* Không cho phép nút file co lại */
+        }
+        .input-container button {
+            background-color: #0078d7;
+            color: #fff;
+            border: none;
+            border-radius: 20px;
+            padding: 12px 20px;
+            cursor: pointer;
+            font-size: 18px; /* Tăng kích thước font */
+            flex-shrink: 0; /* Không cho phép nút gửi co lại */
+        }
+        .input-container button:hover {
+            background-color: #005bb5;
+        }
+
+        /* Responsive styles */
+        @media (max-width: 768px) {
+            .header {
+                font-size: 20px;
+                padding: 15px;
+            }
+            .id-display {
+                font-size: 16px;
+                padding: 10px;
+            }
+            .message-box {
+                padding: 10px;
+            }
+            .input-container {
+                gap: 10px;
+                padding: 10px;
+            }
+            .input-container textarea {
+                font-size: 16px;
+                min-height: 40px;
+            }
+            .input-container button {
+                font-size: 16px;
+                padding: 10px 15px;
+            }
+        }
+        @media (max-height: 500px) {
+            .header {
+                font-size: 18px;
+                padding: 10px;
+            }
+            .id-display {
+                font-size: 14px;
+                padding: 8px;
+            }
+            .message-box {
+                padding: 8px;
+            }
+            .input-container {
+                gap: 8px;
+                padding: 8px;
+            }
+            .input-container textarea {
+                font-size: 14px;
+                min-height: 35px;
+            }
+            .input-container button {
+                font-size: 14px;
+                padding: 8px 12px;
+            }
+        }
+    </style>
+    <script>
+        let userId = '';
+        let hiddenMessages = false;
+
+        async function fetchMessages() {
+            const response = await fetch('/messages');
+            const messages = await response.json();
+            const messageBox = document.getElementById('message-box');
+            messageBox.innerHTML = '';
+
+            if (hiddenMessages && messages.length > 20) {
+                const hiddenMessageDiv = document.createElement('div');
+                hiddenMessageDiv.classList.add('hidden-messages');
+                hiddenMessageDiv.textContent = `Show ${messages.length - 20} older messages`;
+                hiddenMessageDiv.onclick = () => {
+                    hiddenMessages = false;
+                    fetchMessages();
+                };
+                messageBox.appendChild(hiddenMessageDiv);
+                messages.splice(0, messages.length - 20);
+            }
+
+            messages.forEach(msg => {
+                const messageItem = document.createElement('div');
+                messageItem.classList.add('message');
+                const sender = document.createElement('div');
+                sender.classList.add('sender');
+                sender.textContent = msg.sender_id === userId ? 'You' : msg.sender_id;
+
+                if (msg.file_data) {
+                    // Hiển thị hình ảnh từ Base64
+                    const img = document.createElement('img');
+                    img.src = `data:image/png;base64,${msg.file_data}`;
+                    img.alt = msg.file_name || "Image";
+                    messageItem.appendChild(sender);
+                    messageItem.appendChild(img);
+                } else {
+                    // Hiển thị tin nhắn văn bản
+                    const text = document.createElement('div');
+                    text.textContent = msg.message;
+                    messageItem.appendChild(sender);
+                    messageItem.appendChild(text);
+                }
+                messageItem.classList.add(msg.sender_id === userId ? 'sent' : 'received');
+                messageBox.appendChild(messageItem);
+            });
+
+            messageBox.scrollTop = messageBox.scrollHeight;
+        }
+
+        async function initializeUser() {
+            userId = localStorage.getItem('userId');
+            if (!userId) {
+                const response = await fetch('/devices');
+                const devices = await response.json();
+                userId = devices.length > 0 ? devices[devices.length - 1] : 'User_' + Math.floor(Math.random() * 1000);
+                localStorage.setItem('userId', userId);
+            }
+            document.getElementById('user-id-display').textContent = `Your ID: ${userId}`;
+        }
+
+        async function sendMessage() {
+            const messageInput = document.getElementById('message-input');
+            const message = messageInput.value.trim();
+            const fileInput = document.getElementById('file-input');
+            const file = fileInput.files[0];
+            let base64File = null;
+
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = async function () {
+                    base64File = reader.result.split(',')[1];
+                    await sendFileToServer(file.name, base64File);
+                    fileInput.value = ''; // Reset input file
+                };
+                reader.readAsDataURL(file);
+            } else if (message) {
+                await sendToServer(message);
+            }
+            messageInput.value = ''; // Reset khung nhập tin nhắn
+        }
+
+        async function sendToServer(message) {
+            const payload = {
+                sender_id: userId,
+                message: message
+            };
+
+            const response = await fetch('/send_message', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const result = await response.json();
+            if (result.status === 'Message sent') {
+                fetchMessages();
+            } else {
+                alert(result.status);
+            }
+        }
+
+        async function sendFileToServer(fileName, fileData) {
+            const payload = {
+                sender_id: userId,
+                file_name: fileName,
+                file_data: fileData
+            };
+
+            const response = await fetch('/send_file', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const result = await response.json();
+            if (result.status === 'Image saved as Base64') {
+                fetchMessages();
+            } else {
+                alert(result.status);
+            }
+        }
+
+        function handleKeyPress(event) {
+            if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault();
+                sendMessage();
+            }
+        }
+
+        setInterval(fetchMessages, 2000);
+
+        window.onload = async () => {
+            hiddenMessages = true;
+            await initializeUser();
+            fetchMessages();
+        };
+    </script>
+</head>
+<body>
+    <div class="chat-container">
+        <div class="header">Chat Room</div>
+        <div id="user-id-display" class="id-display">Your ID: </div>
+        <div id="message-box" class="message-box">
+            <!-- Messages will be displayed here -->
+        </div>
+        <div class="input-container">
+            <textarea id="message-input" placeholder="Enter your message" onkeypress="handleKeyPress(event)"></textarea>
+            <label for="file-input" title="Attach Image">📎</label>
+            <input type="file" id="file-input" accept="image/*">
+            <button onclick="sendMessage()">Send</button>
+        </div>
+    </div>
+</body>
+</html>
